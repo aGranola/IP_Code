@@ -1,0 +1,153 @@
+import openvsp as vsp
+import numpy as np
+from cst_modeling.section import cst_foil, cst_curve, cst_foil_fit, foil_bump_modify, foil_increment
+from matplotlib import pyplot as plt
+#import PyQt5
+import os
+import pandas as pd
+from scipy.stats import qmc
+
+
+AoAStart = 5
+AoAEnd = 5
+AlphaNpts = 1
+Sref = 12.5
+CL6,CL8,CD6,CD8 = [],[],[],[]
+
+
+def analyseVLM(
+        AoAStart, 
+        AoAEnd,
+        AlphaNpts,
+        Xref,
+        VLM = True, 
+        Sref=False
+        ):
+    analysis_name = "VSPAEROComputeGeometry"
+    vsp.SetAnalysisInputDefaults(analysis_name)
+    analysis_method = list(vsp.GetIntAnalysisInput(analysis_name, "AnalysisMethod" ))
+    if VLM:
+        analysis_method[0] = vsp.VORTEX_LATTICE
+    else:
+        analysis_method[0] = vsp.PANEL
+    vsp.SetIntAnalysisInput(analysis_name, "AnalysisMethod", analysis_method)
+    res_id = vsp.ExecAnalysis( analysis_name )
+    analysis_name = "VSPAEROSweep"
+    vsp.SetAnalysisInputDefaults(analysis_name)
+    vsp.SetDoubleAnalysisInput(analysis_name, "AlphaStart", (AoAStart,), 0)
+    vsp.SetDoubleAnalysisInput(analysis_name, "AlphaEnd", (AoAEnd,), 0)
+    vsp.SetIntAnalysisInput(analysis_name, "AlphaNpts", (AlphaNpts,), 0)
+    vsp.SetIntAnalysisInput(analysis_name, "NCPU", (16,), 0)
+    vsp.SetDoubleAnalysisInput(analysis_name, "Xcg", (Xref,), 0)
+    vsp.SetDoubleAnalysisInput(analysis_name, "MachStart", (0.8,), 0)
+    vsp.SetDoubleAnalysisInput(analysis_name, "MachEnd", (0.8,), 0)
+    vsp.SetIntAnalysisInput(analysis_name, "MachNpts", (1,), 0)
+    vsp.SetDoubleAnalysisInput(analysis_name, "ReCref", (45e06,), 0 )
+    vsp.SetIntAnalysisInput(analysis_name, "ReCrefNpts", (1,), 0)
+    if Sref:
+        vsp.SetDoubleAnalysisInput(analysis_name, "Sref", (Sref,), 0)
+    else:
+        vsp.SetIntAnalysisInput(analysis_name, "RefFlag", (1,), 0)
+    
+    
+    vsp.Update()
+    vsp.DeleteAllResults()
+    res_id = vsp.ExecAnalysis(analysis_name)
+    return res_id
+
+def getResults():
+    history_res = True
+    res = {'CL':[],'CD':[],'L2D':[],'CMy':[],'AoA':[]}
+    i=0
+    while history_res:
+        history_res = vsp.FindResultsID("VSPAERO_History",i)
+        if history_res:
+            res['CL'].append(vsp.GetDoubleResults(history_res, "CL", 0)[-1])
+            res['CD'].append(vsp.GetDoubleResults(history_res, "CDtot", 0)[-1])
+            res['L2D'].append(vsp.GetDoubleResults(history_res, "L/D", 0)[-1])
+            res['CMy'].append(vsp.GetDoubleResults(history_res, "CMy", 0)[-1])
+            res['AoA'].append(vsp.GetDoubleResults(history_res, "Alpha", 0)[-1])
+        i+=1
+    return res
+
+def sampleSetAnalysis(
+        filepath,
+        AoAStart, 
+        AoAEnd,
+        AlphaNpts,
+        VLM = True, 
+        Sref=False
+        ):
+    vsp.VSPRenew()
+    vsp.ReadVSPFile(str(filepath))
+    geoms = vsp.FindGeoms()
+    print(geoms)
+    wing = geoms[0]
+    c_id = vsp.GetParm(wing, "Root_Chord", "XSec_1")
+    rootChord = vsp.GetParmVal(c_id)
+    Xref = rootChord/4
+    analyseVLM(AoAStart, AoAEnd, AlphaNpts, Xref, Sref = Sref)
+
+def analysisPlots(
+            xDataPos, 
+            yDataPos, 
+            dataFile, 
+            imageName,
+            filepath,
+            plotTitle = '', 
+            ):
+    dataset = open(dataFile)
+    datasetLines = dataset.readlines()
+    #print(datasetLines1)
+    xData1 = []
+    yData1 = []
+    for i in datasetLines:
+        i.split()
+        xData1.append(i.split()[xDataPos])
+        yData1.append(i.split()[yDataPos])
+        print(i.split()[xDataPos])
+    xAxisLabel = xData1[0]
+    xData1.pop(0)
+    xData1 = np.array(xData1)
+    xData1 = xData1.astype(float) 
+    yAxisLabel = yData1[0]
+    yData1.pop(0)
+    yData1 = np.array(yData1)
+    yData1 = yData1.astype(float) 
+    #print(xData1)
+
+    plt.figure()
+    plt.plot(xData1, yData1, label = 'VLM')
+    plt.title(plotTitle)
+    plt.xlabel(xAxisLabel)
+    plt.ylabel(yAxisLabel)
+    plt.legend()
+    plt.savefig(filepath + imageName)
+    #plt.show()
+    dataset.close()
+
+cwd = os.getcwd()
+print(cwd)
+noSampleSets = 6
+for i in range(noSampleSets):
+    print(i)
+    analysisFilepath = cwd + "/openvsp_api/sample_set/wingTest" + str(i+1) + "/wingTest" + str(i+1) + "_DegenGeom.polar"
+    print(analysisFilepath)
+    print(os.path.exists(analysisFilepath))
+    if not os.path.exists(analysisFilepath):
+        print("Analysis started")
+        filepath = cwd + "/openvsp_api/sample_set/wingTest" + str(i+1) + "/wingTest" + str(i+1) + ".vsp3"
+        sampleSetAnalysis(filepath, AoAStart, AoAEnd, AlphaNpts)
+        analysisPlots(2, 4, analysisFilepath, "Clalpha" + str(i+1) + "test", "/home/ethan/code/python/IP/openvsp_api/sample_set/wingTest" + str(i+1) + "/")
+        print("Sample Set " + str(i+1) + " done")
+    else:
+        print("Analysis already completed")
+
+#analysisPlots(2, 4, "/home/ethan/code/python/IP/openvsp_api/sample_set/wingTest1/wingTest1_DegenGeom.polar", "Clalpha1test", "/home/ethan/code/python/IP/openvsp_api/sample_set/wingTest1/")
+#res = getResults()
+#CL6.append(res['CL'][0])
+#CL8.append(res['CL'][0])
+#CD6.append(res['CD'][0])
+#CD8.append(res['CD'][0])
+#fnamenew = '/VSPaero_API_Test.vsp3'
+#vsp.WriteVSPFile(path+fnamenew)

@@ -1,0 +1,133 @@
+import openvsp as vsp
+import numpy as np
+from cst_modeling.section import cst_foil, cst_curve, cst_foil_fit, foil_bump_modify, foil_increment
+from matplotlib import pyplot as plt
+import os
+import pandas as pd
+from scipy.stats import qmc
+
+
+#define upper and lower surfaces of aerofoil (not being used)
+#cst_u = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])
+#cst_l = np.array([-0.115514, -0.134195, -0.109145, -0.253206, -0.012220, -0.118463,  0.064100])
+
+
+path = os.getcwd()
+#fname = '/blank.vsp3'
+#vsp.VSPRenew()
+#vsp.ReadVSPFile((path+fname))
+
+
+#Set up Variables
+
+#halfSpan = 5.0 # half_span
+rootChord = 5 # root chord
+tipChord = 3
+span = 20
+sweep = 10
+AoAStart = 0
+AoAEnd = 5
+AlphaNpts = 6
+Xref = rootChord/4
+Sref = 12.5
+CL6,CL8,CD6,CD8 = [],[],[],[]
+
+#n = 2.1 # super ellipse exp
+#sweepLoc = 0.25 # chord location of sweep
+#sweep = 0 # deg
+#growthRate = 1.4
+#numPoints = 5 # number of span cross sections + 1
+#AFname = 'e193.dat'
+
+#S = 12.5
+
+#Start API Interaction
+vsp.VSPCheckSetup()
+vsp.VSPRenew()
+vsp.ClearVSPModel()
+vsp.DeleteAllResults()
+
+#add wing component
+wing = vsp.AddGeom("WING", "")
+
+#set values to wing
+vsp.SetParmVal( wing, "Root_Chord", "XSec_1", rootChord )
+vsp.SetParmVal( wing, "Tip_Chord", "XSec_1", tipChord )
+vsp.SetParmVal( wing, "Span", "XSec_1", span )
+vsp.SetParmVal( wing, "Sweep", "XSec_1", sweep)
+vsp.InsertXSec(wing, 0, vsp.XS_CST_AIRFOIL)
+
+#set aerofoil shape from arrays above (not being used)
+#vsp.SetUpperCST("", 6, cst_u)
+#vsp.SetLowerCST("XSecCurve_0", 6, cst_l)
+
+vsp.Update()
+
+vsp.WriteVSPFile("wing1.vsp3")
+fname = "/wing1.vsp3"
+
+
+def analyseVLM(
+        AoAStart, 
+        AoAEnd,
+        AlphaNpts,
+        Xref,
+        VLM = True, 
+        Sref=False
+        ):
+    analysis_name = "VSPAEROComputeGeometry"
+    vsp.SetAnalysisInputDefaults(analysis_name)
+    analysis_method = list(vsp.GetIntAnalysisInput(analysis_name, "AnalysisMethod" ))
+    if VLM:
+        analysis_method[0] = vsp.VORTEX_LATTICE
+    else:
+        analysis_method[0] = vsp.PANEL
+    vsp.SetIntAnalysisInput(analysis_name, "AnalysisMethod", analysis_method)
+    res_id = vsp.ExecAnalysis( analysis_name )
+    analysis_name = "VSPAEROSweep"
+    vsp.SetAnalysisInputDefaults(analysis_name)
+    vsp.SetDoubleAnalysisInput(analysis_name, "AlphaStart", (AoAStart,), 0)
+    vsp.SetDoubleAnalysisInput(analysis_name, "AlphaEnd", (AoAEnd,), 0)
+    vsp.SetIntAnalysisInput(analysis_name, "AlphaNpts", (AlphaNpts,), 0)
+    vsp.SetIntAnalysisInput(analysis_name, "NCPU", (16,), 0)
+    vsp.SetDoubleAnalysisInput(analysis_name, "Xcg", (Xref,), 0)
+    vsp.SetDoubleAnalysisInput(analysis_name, "MachStart", (0.8,), 0)
+    vsp.SetDoubleAnalysisInput(analysis_name, "MachEnd", (0.8,), 0)
+    vsp.SetIntAnalysisInput(analysis_name, "MachNpts", (1,), 0)
+    if Sref:
+        vsp.SetDoubleAnalysisInput(analysis_name, "Sref", (Sref,), 0)
+    else:
+        vsp.SetIntAnalysisInput(analysis_name, "RefFlag", (1,), 0)
+    
+    
+    vsp.Update()
+    vsp.DeleteAllResults()
+    res_id = vsp.ExecAnalysis(analysis_name)
+    return res_id
+
+def getResults():
+    history_res = True
+    res = {'CL':[],'CD':[],'L2D':[],'CMy':[],'AoA':[]}
+    i=0
+    while history_res:
+        history_res = vsp.FindResultsID("VSPAERO_History",i)
+        if history_res:
+            res['CL'].append(vsp.GetDoubleResults(history_res, "CL", 0)[-1])
+            res['CD'].append(vsp.GetDoubleResults(history_res, "CDtot", 0)[-1])
+            res['L2D'].append(vsp.GetDoubleResults(history_res, "L/D", 0)[-1])
+            res['CMy'].append(vsp.GetDoubleResults(history_res, "CMy", 0)[-1])
+            res['AoA'].append(vsp.GetDoubleResults(history_res, "Alpha", 0)[-1])
+        i+=1
+    return res
+
+vsp.VSPRenew()
+vsp.ReadVSPFile((path+fname))
+
+analyseVLM(AoAStart, AoAEnd, AlphaNpts, Xref, Sref = Sref)
+#res = getResults()
+#CL6.append(res['CL'][0])
+#CL8.append(res['CL'][0])
+#CD6.append(res['CD'][0])
+#CD8.append(res['CD'][0])
+#fnamenew = '/VSPaero_API_Test.vsp3'
+#vsp.WriteVSPFile(path+fnamenew)

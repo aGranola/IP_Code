@@ -1,0 +1,58 @@
+from scipy.stats import qmc
+import openvsp as vsp
+import os
+
+cwd = os.getcwd()
+print(cwd)
+
+#Create random distribution
+sampler = qmc.LatinHypercube(d=7)
+sample = sampler.random(n=6)
+sampleLowerBounds = [3, 1, 13.4, 0, 0.05, 0, 0.25]
+sampleUpperBounds = [7, 3, 26.4, 5, 0.2, 0.089, 0.7]
+sample_scaled = qmc.scale(sample, sampleLowerBounds, sampleUpperBounds)
+#Sample Parameters: Root Chord, Tip Chord, Span, Sweep, t/c, Camber, Camber Location
+#print(sample_scaled)
+#rootChord = [item[0] for item in sample_scaled]
+#print(rootChord)
+
+def create_wing(parameterArray, filepath, filename):
+    stdout = vsp.cvar.cstdout
+    errorMgr = vsp.ErrorMgrSingleton.getInstance()
+
+    vsp.VSPCheckSetup()
+    errorMgr.PopErrorAndPrint(stdout)
+
+    vsp.VSPRenew()
+    vsp.ClearVSPModel()
+    #vsp.DeleteAllResults()
+
+    #add wing component
+    wing = vsp.AddGeom("WING", "")
+    vsp.SetGeomName(wing, "Wing");
+
+    #define parameters
+    vsp.SetParmVal(wing, "Root_Chord", "XSec_1", parameterArray[0])
+    vsp.SetParmVal(wing, "Tip_Chord", "XSec_1", parameterArray[1])
+    vsp.SetParmVal(wing, "Span", "XSec_1", parameterArray[2])
+    vsp.SetParmVal(wing, "Sweep", "XSec_1", parameterArray[3])
+    vsp.InsertXSec(wing, 0, vsp.XS_FOUR_SERIES)
+    vsp.SetParmVal( wing, "ThickChord", "XSecCurve_0", parameterArray[4])
+    vsp.SetParmVal( wing, "Camber", "XSecCurve_0", parameterArray[5])
+    vsp.SetParmVal( wing, "CamberLoc", "XSecCurve_0", parameterArray[6])
+
+    vsp.Update()
+
+    print(filepath)
+    print(os.path.exists(filepath))
+    if not os.path.exists(filepath):
+        os.mkdir(filepath)
+        print("filepath created")
+    vsp.SetVSP3FileName(filepath + filename)
+    vsp.WriteVSPFile(vsp.GetVSPFileName())
+
+
+for i in range(len(sample_scaled)):
+        print(str(i))
+        create_wing(sample_scaled[i], cwd + "/openvsp_api/sample_set/wingTest" + str(i+1), "/wingTest" + str(i+1) + ".vsp3")
+        print("wing created")
