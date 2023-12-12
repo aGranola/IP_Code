@@ -22,6 +22,7 @@ inputData = []
 for i in range(sampleSize):
     currentInputDataset = np.loadtxt(cwd + "/openvsp_api/sample_set/wingTest" + str(i+1) + "/wingTest" + str(i+1) + "_DegenGeom.polar", skiprows=1)
     currentInputSampleSet = []
+    #read in colomn header to find value (look at read_csv using DictReader)
     currentInputSampleSet.append(currentInputDataset[11])
     inputData.append(currentInputSampleSet)
 print(inputData)
@@ -35,6 +36,7 @@ for i in range(sampleSize):
     geoms = vsp.FindGeoms()
     #print(geoms)
     wing = geoms[0]
+    #add more parameters
     rootChordID = vsp.GetParm(wing, "Root_Chord", "XSec_1")
     rootChord = vsp.GetParmVal(rootChordID)
     currentOutputSampleSet = []
