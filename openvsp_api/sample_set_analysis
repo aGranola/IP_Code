@@ -86,6 +86,10 @@ def sampleSetAnalysis(
     c_id = vsp.GetParm(wing, "Root_Chord", "XSec_1")
     rootChord = vsp.GetParmVal(c_id)
     Xref = rootChord/4
+    geoms = vsp.FindGeoms()
+    aspectRatioID = vsp.GetParm(wing, "Aspect", "XSec_1")
+    aspectRatio = vsp.GetParmVal(aspectRatioID)
+    print(aspectRatio)
     analyseVLM(AoAStart, AoAEnd, AlphaNpts, Xref, Sref = Sref)
 
 def analysisPlots(
@@ -128,20 +132,20 @@ def analysisPlots(
 
 cwd = os.getcwd()
 print(cwd)
-noSampleSets = 6
+noSampleSets = 1
 for i in range(noSampleSets):
     print(i)
     analysisFilepath = cwd + "/openvsp_api/sample_set/wingTest" + str(i+1) + "/wingTest" + str(i+1) + "_DegenGeom.polar"
     print(analysisFilepath)
     print(os.path.exists(analysisFilepath))
-    if not os.path.exists(analysisFilepath):
-        print("Analysis started")
-        filepath = cwd + "/openvsp_api/sample_set/wingTest" + str(i+1) + "/wingTest" + str(i+1) + ".vsp3"
-        sampleSetAnalysis(filepath, AoAStart, AoAEnd, AlphaNpts)
-        analysisPlots(2, 4, analysisFilepath, "Clalpha" + str(i+1) + "test", "/home/ethan/code/python/IP/openvsp_api/sample_set/wingTest" + str(i+1) + "/")
-        print("Sample Set " + str(i+1) + " done")
-    else:
-        print("Analysis already completed")
+    #if not os.path.exists(analysisFilepath):
+    print("Analysis started")
+    filepath = cwd + "/openvsp_api/sample_set/wingTest" + str(i+1) + "/wingTest" + str(i+1) + ".vsp3"
+    sampleSetAnalysis(filepath, AoAStart, AoAEnd, AlphaNpts)
+    analysisPlots(2, 4, analysisFilepath, "Clalpha" + str(i+1) + "test", cwd + "/openvsp_api/sample_set/wingTest" + str(i+1) + "/")
+    print("Sample Set " + str(i+1) + " done")
+    #else:
+    #    print("Analysis already completed")
 
 #analysisPlots(2, 4, "/home/ethan/code/python/IP/openvsp_api/sample_set/wingTest1/wingTest1_DegenGeom.polar", "Clalpha1test", "/home/ethan/code/python/IP/openvsp_api/sample_set/wingTest1/")
 #res = getResults()
