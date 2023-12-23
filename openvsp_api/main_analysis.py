@@ -1,4 +1,3 @@
-import openvsp as vsp
 from openvsp_api.generation_functions import create_random_input_params, create_wing
 from openvsp_api.analysis_functions import get_Xref_and_Sref, analyse_VLM
 from openvsp_api.plotting_functions import calculate_data_for_plotting, plot_analysis
@@ -15,7 +14,7 @@ multiple_sample_params = create_random_input_params(num_samples)
 xValues = []
 yValues = []
 pointLabels = []
-outputParentDir = None
+outputParentDir = "sample_set"
 for index, sample_params in enumerate(multiple_sample_params):
     print(f'Running analysis {index}')
     if outputParentDir:
@@ -31,7 +30,7 @@ for index, sample_params in enumerate(multiple_sample_params):
         thickChord = sample_params[4],
         camber = sample_params[5],
         camberLoc = sample_params[6],
-        outputFile = vsp_file)
+        outputFile = vsp_file
     )
     Xref, Sref = get_Xref_and_Sref(vsp_file)
     analyse_VLM(AoAEnd,AlphaNpts,Xref,Sref)
