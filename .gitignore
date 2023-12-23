@@ -1,3 +1,5 @@
 openvsp_api/sample_set
 logs
 .vsptime
+poetry.lock
+pyproject.toml
