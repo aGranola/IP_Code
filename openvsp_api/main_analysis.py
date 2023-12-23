@@ -19,6 +19,7 @@ for index, sample_params in enumerate(multiple_sample_params):
     print(f'Running analysis {index}')
     if outputParentDir:
         sample_output_dir = os.path.join(outputParentDir, f'sample_{i}')
+        os.makedirs(sample_output_dir, exist_ok=True)
     else:
         sample_output_dir = tempfile.TemporaryDirectory()
     vsp_file = os.path.join(sample_output_dir, 'wing_geom.vsp3')
