@@ -8,7 +8,7 @@ import tempfile
 import os
 import numpy as np
 
-num_samples = 5
+num_samples = 10
 AoAStart = 5
 AoAEnd = 5
 AlphaNpts = 1
@@ -92,7 +92,7 @@ plot_analysis(
 MLInputDataNp = np.array(MLInputData)
 MLOutputDataNp = np.array(MLOutputData)
 trainInput, valInput, testInput, trainOutput, valOutput, testOutput = split_data_for_model(MLInputDataNp, MLOutputDataNp)
-hist = train_neural_network(trainInput, trainOutput, valInput, valOutput)
+model, hist = train_neural_network(trainInput, trainOutput, valInput, valOutput)
 plot_loss(hist)
 
 
@@ -100,7 +100,7 @@ plot_loss(hist)
 predictedOutput = model.predict(testInput)
 # calculate L/D for testOutput values
 calculatedLDs = []
-for index,sample_params in enumerate(predictedOutput):
+for index, sample_params in enumerate(predictedOutput):
     vsp.VSPRenew()
 
     sample_output_dir = os.path.join(outputParentDir, f'model_test_sample_{index}')

@@ -52,7 +52,7 @@ def train_neural_network(
     if visualiseModel == True:
         ann_viz(model, filename = "Model Shape")
     
-    return hist
+    return model, hist
 
 def plot_loss(hist):
     fig = plt.figure()
