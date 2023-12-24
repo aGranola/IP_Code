@@ -21,15 +21,9 @@ def split_data_for_model(
     return trainInput, valInput, testInput, trainOutput, valOutput, testOutput
 
 
-def train_neural_network(
-        trainInput:list[float],
+def create_neural_network(
         trainOutput:list[list[float]],
-        valInput:list[float],
-        valOutput:list[list[float]],
-        epochNo:int = 1000,
-        visualiseModel:bool = True
     ):
-
     #  get num variables in output from output data
     model_output_dim = len(trainOutput[0])
     model = keras.Sequential()
@@ -38,21 +32,19 @@ def train_neural_network(
     model.add(Dense(model_output_dim, activation='linear'))
 
     model.compile(loss='mean_squared_error', optimizer='adam')
+    return model
 
+def train_neural_network(model, trainInput, trainOutput, valInput, valOutput, epochNum):
     logdir='logs'
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
     hist = model.fit(
         trainInput,
         trainOutput,
         validation_data=(valInput, valOutput),
-        epochs=epochNo,
+        epochs=epochNum,
         callbacks=[tensorboard_callback]
-    )
-    
-    if visualiseModel == True:
-        ann_viz(model, filename = "Model Shape")
-    
-    return model, hist
+    )    
+    return hist
 
 def plot_loss(hist):
     fig = plt.figure()
