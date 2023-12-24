@@ -1,10 +1,10 @@
-from openvsp_api.generation_functions import create_random_input_params, create_wing
-from openvsp_api.analysis_functions import get_Xref_and_Sref, analyse_VLM
-from openvsp_api.plotting_functions import calculate_data_for_plotting, plot_analysis
+from generation_functions import create_random_input_params, create_wing
+from analysis_functions import get_Xref_and_Sref, analyse_VLM
+from plotting_functions import calculate_data_for_plotting, plot_analysis
 import tempfile
 import os
 
-num_samples = 100
+num_samples = 5
 AoAStart = 5
 AoAEnd = 5
 AlphaNpts = 1
@@ -18,7 +18,7 @@ outputParentDir = "sample_set"
 for index, sample_params in enumerate(multiple_sample_params):
     print(f'Running analysis {index}')
     if outputParentDir:
-        sample_output_dir = os.path.join(outputParentDir, f'sample_{i}')
+        sample_output_dir = os.path.join(outputParentDir, f'sample_{index}')
         os.makedirs(sample_output_dir, exist_ok=True)
     else:
         sample_output_dir = tempfile.TemporaryDirectory()
@@ -34,7 +34,7 @@ for index, sample_params in enumerate(multiple_sample_params):
         outputFile = vsp_file
     )
     Xref, Sref = get_Xref_and_Sref(vsp_file)
-    analyse_VLM(AoAEnd,AlphaNpts,Xref,Sref)
+    analyse_VLM(AoAStart, AoAEnd, AlphaNpts, Xref, Sref)
     analysis_output_file = os.path.join(sample_output_dir, 'wing_geom_DegenGeom.polar')
     
     # get values for plotting
@@ -56,7 +56,7 @@ plot_analysis(
     xValues = xValues,
     yValues = yValues,
     pointLabels = pointLabels,
-    output_file = os.path.join(os.cwd, 'Aspect_Ratio_vs_LD.png'),
+    output_file = os.path.join(os.getcwd(), 'Aspect_Ratio_vs_LD.png'),
     plotTitle = "Aspect Ratio vs the Lift Drag Ratio for the Generated Sample Set",
     xLabel = "Half Wing Aspect Ratio",
     yLabel = "Lift Drag Ratio"
