@@ -2,7 +2,7 @@ from generation_functions import create_random_input_params, create_wing
 from analysis_functions import get_Xref_and_Sref, analyse_VLM
 from plotting_functions import calculate_data_for_plotting, plot_analysis
 from utility_functions import get_data_from_vsp_file, get_data_from_vlm_output, calculate_rmse
-from model_functions import split_data_for_model, train_neural_network, plot_loss
+from model_functions import split_data_for_model, create_neural_network, train_neural_network, plot_loss
 import openvsp as vsp
 import tempfile
 import os
@@ -92,9 +92,9 @@ plot_analysis(
 MLInputDataNp = np.array(MLInputData)
 MLOutputDataNp = np.array(MLOutputData)
 trainInput, valInput, testInput, trainOutput, valOutput, testOutput = split_data_for_model(MLInputDataNp, MLOutputDataNp)
-hist = train_neural_network(trainInput, trainOutput, valInput, valOutput)
+model = create_neural_network(trainOutput)
+hist = train_neural_network(trainInput, trainOutput, valInput, valOutput, 1000)
 plot_loss(hist)
-
 
 # predict outputs
 predictedOutput = model.predict(testInput)

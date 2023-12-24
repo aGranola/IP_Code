@@ -31,3 +31,13 @@ def get_data_from_vlm_output(
         # Extract the L/D value using the index
     value = float(values[index])
     return value
+
+def calculate_rmse(list1, list2):
+    sum_of_squares = 0
+    for i in range(len(list1)):
+        sum_of_squares += (list1[i] - list2[i]) ** 2
+
+    mean_of_squares = sum_of_squares / len(list1)
+    rmse = mean_of_squares ** 0.5
+
+    return rmse
