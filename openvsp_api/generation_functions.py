@@ -11,14 +11,14 @@ def create_random_input_params(num_samples:int) -> list[list[float]]:
     return sample_scaled
 
 def create_wing(
+        outputFile:str,
         aspectRatio:float = 20.0,
         span:float = 20.0,
         taper:float = 0.5,
         sweep:float = 2.0,
         thickChord:float = 0.1,
         camber:float = 0.05,
-        camberLoc:float = 0.5,
-        outputFile:str = None
+        camberLoc:float = 0.5
     ):
     stdout = vsp.cvar.cstdout
     errorMgr = vsp.ErrorMgrSingleton.getInstance()

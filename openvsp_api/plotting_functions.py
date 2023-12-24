@@ -1,42 +1,33 @@
 
 from matplotlib import pyplot as plt
 import openvsp as vsp
+from utility_functions import get_data_from_vsp_file, get_data_from_vlm_output
+
 def calculate_data_for_plotting(
-        inputVSPFile:str = None,
-        inputVariable:str = None,
-        inputXSecName:str= None,
-        outputPolarFile:str = None,
+        inputVSPFile:str,
+        inputVariable:str,
+        inputXSecName:str,
+        outputPolarFile:str,
         outputVariable:str = None
     ):
-    vsp.VSPRenew()
-    vsp.ReadVSPFile(str(inputVSPFile))
-    geoms = vsp.FindGeoms()
-    wing = geoms[0]
-    id = vsp.GetParm(wing, inputVariable, inputXSecName)
-    xValue = vsp.GetParmVal(id)
+    xValue = get_data_from_vsp_file(
+        inputVSPFile,
+        inputVariable,
+        inputXSecName,
+    )
 
-    with open(outputPolarFile, 'r') as file:
-        lines = file.readlines()
-    data_line = lines[1]
-
-    # Split the data line into individual values
-    values = data_line.split()
-
-    # Find the index of the 'L/D' column in the header
-    header_line = lines[0]
-    header_values = header_line.split()
-    index = header_values.index(outputVariable)
-
-    # Extract the L/D value using the index
-    yValue = float(values[index])
+    yValue = get_data_from_vlm_output(
+        outputPolarFile,
+        outputVariable
+    )
 
     return xValue, yValue
 
 def plot_analysis(
-            xValues:list[float] = None,
-            yValues:list[float] = None,
-            pointLabels:list[str] = None,
-            output_file: str = None,
+            xValues:list[float],
+            yValues:list[float],
+            pointLabels:list[str],
+            output_file: str,
             plotTitle:str = '', 
             xLabel:str = '',
             yLabel:str = '',
