@@ -18,7 +18,7 @@ multiple_sample_params = create_random_input_params(num_samples)
 xValues = []
 yValues = []
 pointLabels = []
-outputParentDir = "sample_set"
+outputParentDir = "example_data"
 
 # ML variables
 MLInputData = []
