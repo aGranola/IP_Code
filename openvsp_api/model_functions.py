@@ -3,6 +3,7 @@ from tensorflow import keras
 from keras.layers import Dense
 import matplotlib.pyplot as plt
 import tensorflow as tf
+from tensorflow.keras.callbacks import Callback
 from ann_visualizer.visualize import ann_viz
 
 def split_data_for_model(
@@ -20,29 +21,57 @@ def split_data_for_model(
     
     return trainInput, valInput, testInput, trainOutput, valOutput, testOutput
 
+# Define the custom activation function
+def custom_activation_for_outputs(x):
+    normalized_outputs = []
+    for i in range(len(x)):
+        min_val, max_val = output_ranges[i]
+        normalized_output = (x[i] - min_val) / (max_val - min_val)
+        normalized_outputs.append(normalized_output)
+    return tf.stack(normalized_outputs)  # Ensure TensorFlow tensor format
+
 
 def create_neural_network(
         trainOutput:list[list[float]],
+        output_ranges
     ):
     #  get num variables in output from output data
     model_output_dim = len(trainOutput[0])
     model = keras.Sequential()
     model.add(Dense(5, input_shape=(1,), activation='relu'))
     model.add(Dense(5, activation='relu'))
-    model.add(Dense(model_output_dim, activation='linear'))
+    model.add(Dense(model_output_dim, activation=lambda x: custom_activation_for_outputs(x, output_ranges)))
 
     model.compile(loss='mean_squared_error', optimizer='adam')
     return model
 
-def train_neural_network(model, trainInput, trainOutput, valInput, valOutput, epochNum):
+# Custom callback 
+class OutputMonitor(Callback):
+    def __init__(self, training_data, test_data):
+        self.training_data = training_data
+        self.test_data = test_data
+    
+    def on_epoch_end(self, epoch, logs=None):
+        train_predictions = self.model.predict(self.training_data)
+        test_predictions = self.model.predict(self.test_data)
+
+        # Analyze output values, print or log them
+        print(f"Epoch {epoch + 1}:")
+        print("Training outputs:", train_predictions)
+        print("Test outputs:", test_predictions)
+
+def train_neural_network(model, trainInput, trainOutput, valInput, valOutput, testInput, epochNum):
     logdir='logs'
+
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
+    monitor = OutputMonitor(trainInput, testInput)
+    
     hist = model.fit(
         trainInput,
         trainOutput,
         validation_data=(valInput, valOutput),
         epochs=epochNum,
-        callbacks=[tensorboard_callback]
+        callbacks=[tensorboard_callback, monitor]
     )    
     return hist
 
