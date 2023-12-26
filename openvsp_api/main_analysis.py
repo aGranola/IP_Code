@@ -8,7 +8,7 @@ import tempfile
 import os
 import numpy as np
 
-num_samples = 10
+num_samples = 15
 AoAStart = 5
 AoAEnd = 5
 AlphaNpts = 1
@@ -27,7 +27,7 @@ MLOutputData = []
 for index, sample_params in enumerate(multiple_sample_params):
     vsp.VSPRenew()
 
-    print(f'Running analysis {index}')
+   
     if outputParentDir:
         sample_output_dir = os.path.join(outputParentDir, f'sample_{index}')
         os.makedirs(sample_output_dir, exist_ok=True)
@@ -36,6 +36,7 @@ for index, sample_params in enumerate(multiple_sample_params):
     vsp_file = os.path.join(sample_output_dir, 'wing_geom.vsp3')
     # create vsp file if it does not exist
     if not os.path.exists(vsp_file):
+        print(f'Creating wing {index}')
         create_wing(
             outputFile = vsp_file,
             aspectRatio = sample_params[0],
@@ -50,7 +51,10 @@ for index, sample_params in enumerate(multiple_sample_params):
     
     vlm_analysis_output_file = os.path.join(sample_output_dir, 'wing_geom_DegenGeom.polar')
     if not os.path.exists(vlm_analysis_output_file):
+        print(f'Running analysis {index}')
         analyse_VLM(AoAStart, AoAEnd, AlphaNpts, Xref, Sref)
+    else:
+         print(f'Skipping analysis {index}')
     
     # get values for plotting
     xValue, yValue = calculate_data_for_plotting(
@@ -94,8 +98,8 @@ MLOutputDataNp = np.array(MLOutputData)
 trainInput, valInput, testInput, trainOutput, valOutput, testOutput = split_data_for_model(MLInputDataNp, MLOutputDataNp)
 
 # Define output ranges
-output_ranges = [(0, 1), (-2, 2), (5, 10), (0.1, 0.9), (-10, 10), (0, 5), (100, 200)]
-model = create_neural_network(trainOutput, output_ranges)
+output_ranges = [(17.1/2, 38.7/2), (13.4, 26.4), (0, 1), (0, 5), (0.05, 0.2), (0, 0.089), (0.25, 0.7)]
+model = create_neural_network(len(trainOutput[1]), output_ranges)
 
 hist = train_neural_network(model, trainInput, trainOutput, valInput, valOutput, testInput, 1000)
 plot_loss(hist)

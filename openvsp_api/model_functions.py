@@ -3,7 +3,7 @@ from tensorflow import keras
 from keras.layers import Dense
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow.keras.callbacks import Callback
+from keras.callbacks import Callback
 from ann_visualizer.visualize import ann_viz
 
 def split_data_for_model(
@@ -22,25 +22,27 @@ def split_data_for_model(
     return trainInput, valInput, testInput, trainOutput, valOutput, testOutput
 
 # Define the custom activation function
-def custom_activation_for_outputs(x):
+def custom_activation_for_outputs(x, output_ranges):
     normalized_outputs = []
-    for i in range(len(x)):
+    for i in range(x.shape[1]):
         min_val, max_val = output_ranges[i]
         normalized_output = (x[i] - min_val) / (max_val - min_val)
         normalized_outputs.append(normalized_output)
+    print(x.shape)
+    print(tf.stack(normalized_outputs).shape)
     return tf.stack(normalized_outputs)  # Ensure TensorFlow tensor format
 
 
 def create_neural_network(
-        trainOutput:list[list[float]],
+        numOutputValues:int,
         output_ranges
     ):
     #  get num variables in output from output data
-    model_output_dim = len(trainOutput[0])
+    print(numOutputValues)
     model = keras.Sequential()
     model.add(Dense(5, input_shape=(1,), activation='relu'))
     model.add(Dense(5, activation='relu'))
-    model.add(Dense(model_output_dim, activation=lambda x: custom_activation_for_outputs(x, output_ranges)))
+    model.add(Dense(numOutputValues, activation=lambda x: custom_activation_for_outputs(x, output_ranges)))
 
     model.compile(loss='mean_squared_error', optimizer='adam')
     return model
@@ -66,6 +68,11 @@ def train_neural_network(model, trainInput, trainOutput, valInput, valOutput, te
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
     monitor = OutputMonitor(trainInput, testInput)
     
+    print(len(trainInput))
+    print(len(trainOutput))
+    print(len(valInput))
+    print(len(valOutput))
+
     hist = model.fit(
         trainInput,
         trainOutput,
