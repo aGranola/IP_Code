@@ -41,7 +41,7 @@ def create_wing(
     vsp.SetParmVal(wing, "Span", "XSec_1", span)
     vsp.SetParmVal(wing, "Taper", "XSec_1", taper)
     vsp.SetParmVal(wing, "Sweep", "XSec_1", sweep)
-    #vsp.InsertXSec(wing, 0, vsp.XS_FOUR_SERIES)
+    vsp.InsertXSec(wing, 0, vsp.XS_FOUR_SERIES)
     vsp.SetParmVal(wing, "ThickChord", "XSecCurve_0", thickChord)
     vsp.SetParmVal(wing, "Camber", "XSecCurve_0", camber)
     vsp.SetParmVal(wing, "CamberLoc", "XSecCurve_0", camberLoc)

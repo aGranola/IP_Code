@@ -93,7 +93,7 @@ MLInputDataNp = np.array(MLInputData)
 MLOutputDataNp = np.array(MLOutputData)
 trainInput, valInput, testInput, trainOutput, valOutput, testOutput = split_data_for_model(MLInputDataNp, MLOutputDataNp)
 model = create_neural_network(trainOutput)
-hist = train_neural_network(trainInput, trainOutput, valInput, valOutput, 1000)
+hist = train_neural_network(model, trainInput, trainOutput, valInput, valOutput, 50)
 plot_loss(hist)
 
 # predict outputs
@@ -102,21 +102,25 @@ predictedOutput = model.predict(testInput)
 calculatedLDs = []
 for index, sample_params in enumerate(predictedOutput):
     vsp.VSPRenew()
-
+    sample_params_list = list(sample_params)
+    sample_params_list = [float(f) for f in sample_params_list]
     sample_output_dir = os.path.join(outputParentDir, f'model_test_sample_{index}')
     os.makedirs(sample_output_dir, exist_ok=True)
     vsp_file = os.path.join(sample_output_dir, 'wing_geom.vsp3')
+
     create_wing(
             outputFile = vsp_file,
-            aspectRatio = sample_params[0],
-            span = sample_params[1],
-            taper = sample_params[2],
-            sweep = sample_params[3],
-            thickChord = sample_params[4],
-            camber = sample_params[5],
-            camberLoc = sample_params[6]
+            aspectRatio = sample_params_list[0],
+            span = sample_params_list[1],
+            taper = sample_params_list[2],
+            sweep = sample_params_list[3],
+            thickChord = sample_params_list[4],
+            camber = sample_params_list[5],
+            camberLoc = sample_params_list[6]
     )
     Xref, Sref = get_Xref_and_Sref(vsp_file)
+    print(Sref)
+    print(sample_params_list)
     
     vlm_analysis_output_file = os.path.join(sample_output_dir, 'wing_geom_DegenGeom.polar')
     analyse_VLM(AoAStart, AoAEnd, AlphaNpts, Xref, Sref)
@@ -124,5 +128,5 @@ for index, sample_params in enumerate(predictedOutput):
     calculatedLDs.append(vlm_ld)
     
 
-print(testInput, calculatedLDs)
-print(f'RMSE = {calculate_rmse((testInput, calculatedLDs))}')
+print(list(testInput), calculatedLDs)
+print(f'RMSE = {calculate_rmse(list(testInput), calculatedLDs)}')
