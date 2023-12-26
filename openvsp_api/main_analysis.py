@@ -92,8 +92,12 @@ plot_analysis(
 MLInputDataNp = np.array(MLInputData)
 MLOutputDataNp = np.array(MLOutputData)
 trainInput, valInput, testInput, trainOutput, valOutput, testOutput = split_data_for_model(MLInputDataNp, MLOutputDataNp)
-model = create_neural_network(trainOutput)
-hist = train_neural_network(model, trainInput, trainOutput, valInput, valOutput, 50)
+
+# Define output ranges
+output_ranges = [(0, 1), (-2, 2), (5, 10), (0.1, 0.9), (-10, 10), (0, 5), (100, 200)]
+model = create_neural_network(trainOutput, output_ranges)
+
+hist = train_neural_network(model, trainInput, trainOutput, valInput, valOutput, testInput, 1000)
 plot_loss(hist)
 
 # predict outputs
