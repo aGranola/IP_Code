@@ -1,9 +1,11 @@
 import numpy as np
-from tensorflow import keras
-from keras.layers import Dense
-import matplotlib.pyplot as plt
 import tensorflow as tf
+from tensorflow import keras
+from keras.models import Sequential
+from keras.layers import Dense, Activation, Lambda
 from keras.callbacks import Callback
+import keras.backend as K
+import matplotlib.pyplot as plt
 from ann_visualizer.visualize import ann_viz
 
 def split_data_for_model(
@@ -22,27 +24,33 @@ def split_data_for_model(
     return trainInput, valInput, testInput, trainOutput, valOutput, testOutput
 
 # Define the custom activation function
-def custom_activation_for_outputs(x, output_ranges):
-    normalized_outputs = []
-    for i in range(x.shape[1]):
-        min_val, max_val = output_ranges[i]
-        normalized_output = (x[i] - min_val) / (max_val - min_val)
-        normalized_outputs.append(normalized_output)
-    print(x.shape)
-    print(tf.stack(normalized_outputs).shape)
-    return tf.stack(normalized_outputs)  # Ensure TensorFlow tensor format
+def custom_activation_for_outputs(x, min_values, max_values):
+    """Normalizes each output node between its corresponding min and max values."""
+    min_values = K.constant(min_values)  # Convert lists to tensors
+    max_values = K.constant(max_values)
 
+    normalized = (x - K.min(x, axis=-1, keepdims=True)) / (K.max(x, axis=-1, keepdims=True) - K.min(x, axis=-1, keepdims=True))
+    return normalized * (max_values - min_values) + min_values
 
 def create_neural_network(
         numOutputValues:int,
         output_ranges
     ):
-    #  get num variables in output from output data
-    print(numOutputValues)
-    model = keras.Sequential()
-    model.add(Dense(5, input_shape=(1,), activation='relu'))
-    model.add(Dense(5, activation='relu'))
-    model.add(Dense(numOutputValues, activation=lambda x: custom_activation_for_outputs(x, output_ranges)))
+    min_values = [ min_max[0] for min_max in output_ranges]
+    max_values = [ min_max[1] for min_max in output_ranges]
+    
+    model = Sequential([
+        Dense(5, input_shape=(1,), activation='relu'),
+        Dense(5, activation='relu'),
+        Dense(numOutputValues),  # Output layer without activation
+        Lambda(
+            custom_activation_for_outputs,
+            arguments={
+                'min_values': min_values,
+                'max_values': max_values
+            }
+        )
+    ])
 
     model.compile(loss='mean_squared_error', optimizer='adam')
     return model
@@ -62,7 +70,7 @@ class OutputMonitor(Callback):
         print("Training outputs:", train_predictions)
         print("Test outputs:", test_predictions)
 
-def train_neural_network(model, trainInput, trainOutput, valInput, valOutput, testInput, epochNum):
+def train_neural_network(model, trainInput, trainOutput, valInput, valOutput, testInput, numEpochs):
     logdir='logs'
 
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
@@ -77,7 +85,7 @@ def train_neural_network(model, trainInput, trainOutput, valInput, valOutput, te
         trainInput,
         trainOutput,
         validation_data=(valInput, valOutput),
-        epochs=epochNum,
+        epochs=numEpochs,
         callbacks=[tensorboard_callback, monitor]
     )    
     return hist

@@ -12,6 +12,7 @@ num_samples = 15
 AoAStart = 5
 AoAEnd = 5
 AlphaNpts = 1
+numEpochs=500
 # create random input params
 multiple_sample_params = create_random_input_params(num_samples)
 # plotting variables
@@ -101,9 +102,8 @@ trainInput, valInput, testInput, trainOutput, valOutput, testOutput = split_data
 output_ranges = [(17.1/2, 38.7/2), (13.4, 26.4), (0, 1), (0, 5), (0.05, 0.2), (0, 0.089), (0.25, 0.7)]
 model = create_neural_network(len(trainOutput[1]), output_ranges)
 
-hist = train_neural_network(model, trainInput, trainOutput, valInput, valOutput, testInput, 1000)
+hist = train_neural_network(model, trainInput, trainOutput, valInput, valOutput, testInput, numEpochs)
 plot_loss(hist)
-
 # predict outputs
 predictedOutput = model.predict(testInput)
 # calculate L/D for testOutput values
