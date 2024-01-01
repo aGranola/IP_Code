@@ -1,9 +1,9 @@
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
-from keras.models import Sequential
-from keras.layers import Dense, Activation, Lambda
+from keras.models import Sequential, Model
+from keras.layers import Dense, Input, Lambda
 from keras.callbacks import Callback
+from keras.losses import mean_squared_error
 import keras.backend as K
 import matplotlib.pyplot as plt
 from ann_visualizer.visualize import ann_viz
@@ -57,38 +57,100 @@ def create_neural_network(
 
 # Custom callback 
 class OutputMonitor(Callback):
-    def __init__(self, training_data, test_data):
-        self.training_data = training_data
-        self.test_data = test_data
+    def __init__(self, training_input, training_output):
+        self.training_input = training_input
+        self.training_output = training_output
     
     def on_epoch_end(self, epoch, logs=None):
-        train_predictions = self.model.predict(self.training_data)
-        test_predictions = self.model.predict(self.test_data)
+        train_predictions = self.model.predict(self.training_input)
 
-        # Analyze output values, print or log them
+        # Print output of first 3 outputs
         print(f"Epoch {epoch + 1}:")
-        print("Training outputs:", train_predictions)
-        print("Test outputs:", test_predictions)
+        print("Training inputs:",  np.vectorize("{:.2f}".format)(self.training_input)[:3])
+        print("Training outputs:",  np.vectorize("{:.2f}".format)(self.training_output)[:3])
+        print("Predicted outputs", np.vectorize("{:.2f}".format)(train_predictions)[:3])
 
-def train_neural_network(model, trainInput, trainOutput, valInput, valOutput, testInput, numEpochs):
+def train_model(model, trainInput, trainOutput, valInput, valOutput, numEpochs, batchSize):
     logdir='logs'
 
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
-    monitor = OutputMonitor(trainInput, testInput)
-    
-    print(len(trainInput))
-    print(len(trainOutput))
-    print(len(valInput))
-    print(len(valOutput))
+    monitor = OutputMonitor(trainInput, trainOutput)
 
     hist = model.fit(
         trainInput,
         trainOutput,
         validation_data=(valInput, valOutput),
         epochs=numEpochs,
+        batch_size=batchSize,
         callbacks=[tensorboard_callback, monitor]
     )    
     return hist
+
+
+###########################  VAE #######################################
+def vae_sampling(args):
+    z_mean, z_log_var = args
+    batch = K.shape(z_mean)[0]
+    dim = K.int_shape(z_mean)[1]
+    epsilon = K.random_normal(shape=(batch, dim))
+    return z_mean + K.exp(0.5 * z_log_var) * epsilon
+
+def mse_vae_loss(encoder_input, decoder_output, z_mean, z_log_var, output_dim):
+    reconstruction_loss = mean_squared_error(encoder_input, decoder_output) * output_dim
+    kl_loss = 1 + z_log_var - K.square(z_mean) - K.exp(z_log_var)
+    kl_loss = K.sum(kl_loss, axis=-1)
+    kl_loss *= -0.5
+    vae_loss = K.mean(reconstruction_loss + kl_loss)
+    return vae_loss
+
+def kl_divergence_vae_loss(encoder_input, decoder_output, z_mean, z_log_var, beta=1.0):
+    reconstruction_loss = K.mean(K.square(encoder_input - decoder_output), axis=-1)
+    kl_divergence = K.mean(-0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1), axis=-1)
+    return reconstruction_loss + (beta * kl_divergence)  # `beta` controls KL weight
+
+
+def create_vae(
+        output_dim:int,
+        output_ranges: list[tuple[int]]
+    ):
+    min_values = [ min_max[0] for min_max in output_ranges]
+    max_values = [ min_max[1] for min_max in output_ranges]
+    
+    # Encoder
+    input_dim = 1  # Adjust as per your input
+    latent_dim = 2  # Latent space dimension
+    encoder_input = Input(shape=(input_dim,))  # 1 input
+    # Encoder network
+    encoded = Dense(64, activation='relu')(encoder_input)
+    # encoded = Dense(100, activation='relu')(encoded)
+    z_mean = Dense(latent_dim, name='z_mean')(encoded) # Latent mean
+    z_log_var = Dense(latent_dim, name='z_log_var')(encoded) # Latent log variance
+    # Latent sampling layer
+    z = Lambda(vae_sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
+    encoder = Model(encoder_input, [z_mean, z_log_var, z], name='encoder')
+    # Decoder
+    decoder_input = Input(shape=(latent_dim,))
+    # Decoder network
+    decoded = Dense(64, activation='relu')(decoder_input)
+    # decoded = Dense(50, activation='relu')(decoded)
+    decoded = Dense(output_dim, activation='sigmoid')(decoded)
+    decoder_output = Lambda(
+        custom_activation_for_outputs,
+        arguments={
+            'min_values': min_values,
+            'max_values': max_values
+        }
+    )(decoded)
+    decoder = Model(decoder_input, decoder_output, name='decoder')
+    
+    # VAE
+    output = decoder(encoder(encoder_input)[2])
+    vae = Model(encoder_input, output, name='vae')
+    # vae_loss = kl_divergence_vae_loss(encoder_input, output, z_mean, z_log_var, beta=1.0)
+    # vae_loss = mse_vae_loss(encoder_input, output, z_mean, z_log_var, output_dim)
+    # vae.add_loss(vae_loss)
+    vae.compile(optimizer='adam', loss='mse', metrics=['accuracy'])
+    return vae
 
 def plot_loss(hist):
     fig = plt.figure()
