@@ -1,8 +1,8 @@
 from generation_functions import create_random_input_params, create_wing
 from analysis_functions import get_Xref_and_Sref, analyse_VLM
-from plotting_functions import calculate_data_for_plotting, plot_analysis
+from plotting_functions import calculate_data_for_plotting, plot_analysis, plot_loss_from_hist, plot_gan_loss, plot_gan
 from utility_functions import get_data_from_vsp_file, get_data_from_vlm_output, calculate_rmse
-from model_functions import split_data_for_model, create_neural_network, create_vae, train_model, plot_loss
+from model_functions import split_data_for_model, create_neural_network, create_vae, train_model, create_gan, train_gan
 import openvsp as vsp
 import tempfile
 import os
@@ -12,8 +12,8 @@ num_samples = 15
 AoAStart = 5
 AoAEnd = 5
 AlphaNpts = 1
-numEpochs=250
-batchSize=None
+numEpochs=1000
+batchSize=32
 # create random input params
 multiple_sample_params = create_random_input_params(num_samples)
 # plotting variables
@@ -101,10 +101,14 @@ trainInput, valInput, testInput, trainOutput, valOutput, testOutput = split_data
 # Define output ranges
 output_ranges = [(17.1/2, 38.7/2), (13.4, 26.4), (0, 1), (0, 5), (0.05, 0.2), (0, 0.089), (0.25, 0.7)]
 # model = create_neural_network(len(trainOutput[1]), output_ranges)
-model = create_vae(len(trainOutput[1]), output_ranges)
+# model = create_vae(len(trainOutput[1]), output_ranges)
 
-hist = train_model(model, trainInput, trainOutput, valInput, valOutput, numEpochs, batchSize)
-plot_loss(hist)
+# hist = train_model(model, trainInput, trainOutput, valInput, valOutput, numEpochs, batchSize)
+# plot_loss_from_hist(hist)
+
+generator, discriminator, gan = create_gan(len(trainOutput[1]), output_ranges)
+discriminator_losses, generator_losses = train_gan(numEpochs, batchSize, trainInput, trainOutput, generator, discriminator, gan)
+plot_gan_loss(discriminator_losses, generator_losses)
 exit()
 # predict outputs
 predictedOutputs = model.predict(testInput)

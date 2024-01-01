@@ -4,6 +4,7 @@ from keras.models import Sequential, Model
 from keras.layers import Dense, Input, Lambda
 from keras.callbacks import Callback
 from keras.losses import mean_squared_error
+from keras.optimizers import Adam
 import keras.backend as K
 import matplotlib.pyplot as plt
 from ann_visualizer.visualize import ann_viz
@@ -81,7 +82,7 @@ def train_model(model, trainInput, trainOutput, valInput, valOutput, numEpochs, 
         trainOutput,
         validation_data=(valInput, valOutput),
         epochs=numEpochs,
-        batch_size=batchSize,
+        batchSize=batchSize,
         callbacks=[tensorboard_callback, monitor]
     )    
     return hist
@@ -110,11 +111,11 @@ def kl_divergence_vae_loss(encoder_input, decoder_output, z_mean, z_log_var, bet
 
 
 def create_vae(
-        output_dim:int,
-        output_ranges: list[tuple[int]]
+        outputDim:int,
+        outputRanges: list[tuple[int]]
     ):
-    min_values = [ min_max[0] for min_max in output_ranges]
-    max_values = [ min_max[1] for min_max in output_ranges]
+    min_values = [ min_max[0] for min_max in outputRanges]
+    max_values = [ min_max[1] for min_max in outputRanges]
     
     # Encoder
     input_dim = 1  # Adjust as per your input
@@ -133,7 +134,7 @@ def create_vae(
     # Decoder network
     decoded = Dense(64, activation='relu')(decoder_input)
     # decoded = Dense(50, activation='relu')(decoded)
-    decoded = Dense(output_dim, activation='sigmoid')(decoded)
+    decoded = Dense(outputDim, activation='sigmoid')(decoded)
     decoder_output = Lambda(
         custom_activation_for_outputs,
         arguments={
@@ -147,16 +148,80 @@ def create_vae(
     output = decoder(encoder(encoder_input)[2])
     vae = Model(encoder_input, output, name='vae')
     # vae_loss = kl_divergence_vae_loss(encoder_input, output, z_mean, z_log_var, beta=1.0)
-    # vae_loss = mse_vae_loss(encoder_input, output, z_mean, z_log_var, output_dim)
+    # vae_loss = mse_vae_loss(encoder_input, output, z_mean, z_log_var, outputDim)
     # vae.add_loss(vae_loss)
     vae.compile(optimizer='adam', loss='mse', metrics=['accuracy'])
     return vae
 
-def plot_loss(hist):
-    fig = plt.figure()
-    plt.plot(hist.history['loss'], color='blue', label='loss')
-    plt.plot(hist.history['val_loss'], color='pink', label='val_loss')
-    fig.suptitle('Loss', fontsize=20)
-    plt.legend(loc="upper left")
-    plt.savefig("Loss Curve.png")
-    plt.show()
+def create_gan(
+        outputDim:int,
+        outputRanges: list[tuple[int]]
+    ):
+    min_values = [ min_max[0] for min_max in outputRanges]
+    max_values = [ min_max[1] for min_max in outputRanges]
+
+    # Generator
+    # Input layer for single input value
+    generator_input = Input(shape=(1,))
+
+    # Hidden layers for feature learning (adjust as needed)
+    x = Dense(128, activation='relu')(generator_input)
+    x = Dense(256, activation='relu')(x)
+
+    # Output layer with 7 outputs
+    generator_output = Dense(outputDim, activation='sigmoid')(x)  # Sigmoid for constraining outputs
+
+    # Create the generator model
+    generator = Model(generator_input, generator_output)
+    
+    # Discriminator
+    discriminator_input = Input(shape=(7,))
+
+    # Hidden layers for discrimination (adjust as needed)
+    x = Dense(256, activation='relu')(discriminator_input)
+    x = Dense(128, activation='relu')(x)
+
+    # Output layer with sigmoid activation for binary classification
+    discriminator_output = Dense(1, activation='sigmoid')(x)
+
+    # Create the discriminator model
+    discriminator = Model(discriminator_input, discriminator_output) 
+    # Freeze discriminator's weights when training the generator
+    discriminator.trainable = False
+
+    # create gan
+    gan_input = Input(shape=(1,))
+    gan_output = discriminator(generator(gan_input))
+    gan = Model(gan_input, gan_output)
+    optimizer = Adam(learning_rate=0.0002, beta_1=0.5)  # Common choice for GANs
+
+    discriminator.compile(optimizer=optimizer, loss='binary_crossentropy')
+    gan.compile(optimizer=optimizer, loss='binary_crossentropy')
+    return generator, discriminator, gan
+    
+def train_gan(numEpochs:int, batchSize:int, trainInput, trainOutput, generator, discriminator, gan):
+    discriminator_losses = []
+    generator_losses = []
+    for epoch in range(numEpochs):
+        # Train discriminator on real and fake data
+        for batch_i in range(0, len(trainInput), batchSize):
+            real_inputs = trainInput[batch_i:batch_i+batchSize]
+            real_outputs = trainOutput[batch_i:batch_i+batchSize]
+
+            generated_outputs = generator.predict(real_inputs)
+            # Calculate discriminator loss (average of real and fake losses)
+            discriminator_loss_real = discriminator.train_on_batch(real_outputs, np.ones((len(real_outputs), 1))) # Real labels as 1
+            discriminator_loss_fake = discriminator.train_on_batch(generated_outputs, np.zeros((len(generated_outputs), 1))) # Fake labels as 0
+            discriminator_loss = 0.5 * np.add(discriminator_loss_real, discriminator_loss_fake)
+            discriminator_losses.append(discriminator_loss)
+
+
+        # Train generator (using frozen discriminator)
+        noise = np.random.normal(0, 1, (batchSize, 1))  # Add noise for better exploration
+        discriminator.trainable = False
+        generator_loss = gan.train_on_batch(noise, np.ones((batchSize, 1)))  # Flip labels for generator
+        generator_losses.append(generator_loss)
+        discriminator.trainable = True
+        print(f"Epoch {epoch+1}, Discriminator Loss: {discriminator_loss:.4f}, Generator Loss: {generator_loss:.4f}")
+    return discriminator_losses, generator_losses
+

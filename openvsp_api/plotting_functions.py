@@ -40,3 +40,47 @@ def plot_analysis(
     plt.ylabel(yLabel)
     plt.legend()
     plt.savefig(output_file)
+    plt.show()
+
+
+def plot_gan_loss(discriminator_losses, generator_losses, output_file:str = 'loss_curve.png'):
+    x=discriminator_losses
+    y=generator_losses
+    x_label='Discriminator Loss'
+    y_label='Generator Loss'
+    x_axis_label = 'Epochs'
+    y_axis_label = 'Loss'
+    plot_loss(x, y, x_label, y_label, x_axis_label, y_axis_label, output_file)
+
+    plt.legend()
+    plt.savefig(output_file)
+
+def plot_loss_from_hist(hist, output_file:str = 'loss_curve.png'):
+    x = hist.history['loss']
+    y = hist.history['val_loss']
+    x_label='loss'
+    y_label='val loss'
+    x_axis_label = 'Epochs'
+    y_axis_label = 'Loss'
+    plot_loss(x, y, x_label, y_label, x_axis_label, y_axis_label, output_file)
+
+def plot_loss(x:list[float],y:list[float], x_label:str, y_label:str, x_axis_label:str, y_axis_label:str, output_file:str):
+    fig = plt.figure()
+    plt.plot(x, color='blue', label=x_label)
+    plt.plot(y, color='orange', label=y_label)
+    fig.suptitle('Loss Curve', fontsize=20)
+    plt.xlabel(x_axis_label)
+    plt.ylabel(y_axis_label)
+    plt.legend(loc="upper left")
+    plt.savefig(output_file)
+    plt.show()
+    
+    
+def plot_gan(discriminator_losses, generator_losses, output_file:str = 'loss_curve.png'):
+    plt.plot(discriminator_losses, label='Discriminator Loss')
+    plt.plot(generator_losses, label='Generator Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(output_file)
+    plt.show()
